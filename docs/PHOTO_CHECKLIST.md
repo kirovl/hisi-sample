@@ -37,6 +37,11 @@
 
 | 文件 | 内容 | 检查结果 |
 | --- | --- | --- |
+| images/main-screen.png | 全屏摄像头主界面与右上角悬浮按钮 | 实板 framebuffer，无露脸人物 |
+| images/main-menu.png | 向下展开的五项图标菜单 | 实板 framebuffer，无露脸人物 |
+| images/main-stats.png | 分辨率、采集 FPS、应用 FPS 与目标数 | 实板 framebuffer，无露脸人物 |
+| images/detection-human-hand.png | 用户指定 shot-3961-6876-000003.png，HUMAN 55% | 无露脸人物，手部被识别为 HUMAN；不作为 PACKAGE 成功示例 |
+| images/detection-package.png | 绿色纸盒被框出，PACKAGE 55% | 已检查，无露脸人物，标签与同帧 JSON 一致 |
 | images/device-board.png | 主板、SoC、内核和内存状态 | 实板页面，无人物 |
 | images/device-camera.png | OS04D10、分辨率、采集与应用 FPS、LCD 和触摸 | 实板页面，无人物 |
 | images/device-radio.png | WS73、Wi-Fi 与蓝牙 HCI 状态 | 实板页面，无人物 |

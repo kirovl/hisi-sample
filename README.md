@@ -39,6 +39,22 @@ OS04D10 → VI / ISP → VPSS NV21 → AIComponent → 画面 + 多目标框 / �
 
 以下是 2026-11-03 自动触摸操作后，从实板 DRM framebuffer 读取的真实 320×240 页面，不是界面设计图或屏幕实拍；所选图片不含露脸人物。
 
+| 全屏主界面 | 悬浮菜单展开 | 画面统计开启 |
+| --- | --- | --- |
+| ![摄像头全屏预览与右上角悬浮按钮](docs/images/main-screen.png) | ![向下展开的五项图标菜单](docs/images/main-menu.png) | ![分辨率、采集帧率与应用帧率叠层](docs/images/main-stats.png) |
+
+上图是实际摄像头预览，截图时画面中无检测目标；统计显示采集 2560×1440 / 15 FPS、AI 输入 768×432，应用约 2.3 FPS。菜单和统计页由完整 framebuffer 采集，区别于菜单中相机按钮保存的纯摄像头与识别结果图。
+
+包裹识别截图 `shot-19211-22666-000003.png`：模型将画面中的绿色纸盒标为 PACKAGE，置信度 55%，识别框、类别与置信度均为原图内容。
+
+![包裹识别效果：绿色纸盒被框出并标记 PACKAGE 55%](docs/images/detection-package.png)
+
+用户保留的识别截图 `shot-3961-6876-000003.png`：
+
+![指定识别效果图：画面中的手部被模型标为 HUMAN 55%](docs/images/detection-human-hand.png)
+
+该帧实际标签为 HUMAN、置信度 55%，画面中的手部被标为人体，属于误检示例；不能据此说明 PACKAGE 检测成功。
+
 | 主板信息 | 摄像头与屏幕 | 无线模块 |
 | --- | --- | --- |
 | ![主板信息](docs/images/device-board.png) | ![摄像头信息](docs/images/device-camera.png) | ![无线模块信息](docs/images/device-radio.png) |
@@ -175,16 +191,6 @@ sh /opt/camera_ai_lcd/serve-screenshots.sh start
 ```bash
 curl --fail --user anonymous: --list-only ftp://192.168.3.70:80/
 ```
-
-### 跨网段无法打开相册
-
-如果板端 8080 已处于 LISTEN，但电脑直连超时，先检查回程路由。此次板子无链路的 eth0 仍有同网段路由，电脑与板子又位于不同子网。临时可经能访问板子的 Ubuntu 转发：
-
-```sh
-ssh -N -L 127.0.0.1:18080:192.168.3.70:8080 用户名@Ubuntu地址
-```
-
-保持 SSH 连接，浏览器打开 <http://127.0.0.1:18080/>。该转发仅监听电脑本机，已验证 HTTP 200；停止 SSH 后失效，长期应修正网络路由。
 
 ## 验证记录与测试
 
