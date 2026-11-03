@@ -7,6 +7,7 @@ Hi3516CV610 独立应用：OS04D10 摄像头实时采集、AIComponent 多目标
 ## 目录
 
 - [功能](#功能)
+- [运行截图](#运行截图)
 - [硬件与运行环境](#硬件与运行环境)
 - [Ubuntu 构建](#ubuntu-构建)
 - [Wi-Fi 与截图服务打包](#wi-fi-与截图服务打包)
@@ -33,6 +34,18 @@ OS04D10 → VI / ISP → VPSS NV21 → AIComponent → 画面 + 多目标框 / �
 - 默认直接进入预览，后台重连保存的 Wi-Fi；触屏扫描热点、选择网络、输入密码，无须手机 BLE。
 - 网络、主板、摄像头、无线模块信息；画面统计开关；PNG / JSON 截图；只读 FTP 和 HTTP 相册。
 - 未实现连续录屏、RTSP、异步推理或永久安装内核。
+
+## 运行截图
+
+以下是 2026-11-03 自动触摸操作后，从实板 DRM framebuffer 读取的真实 320×240 页面，不是界面设计图或屏幕实拍；所选图片不含露脸人物。
+
+| 主板信息 | 摄像头与屏幕 | 无线模块 |
+| --- | --- | --- |
+| ![主板信息](docs/images/device-board.png) | ![摄像头信息](docs/images/device-camera.png) | ![无线模块信息](docs/images/device-radio.png) |
+
+摄像头页显示 OS04D10、2560×1440、15 FPS 采集，AI 开启时应用约 2.3 FPS。RADIO 页的 HCI NOT EXPOSED 表示本应用未验证蓝牙协议栈，不能据此判定硬件损坏。
+
+待补实物照片清单见 [PHOTO_CHECKLIST.md](docs/PHOTO_CHECKLIST.md)。人物露脸原图与未检查截图不纳入文档。
 
 ## 硬件与运行环境
 
@@ -162,6 +175,16 @@ sh /opt/camera_ai_lcd/serve-screenshots.sh start
 ```bash
 curl --fail --user anonymous: --list-only ftp://192.168.3.70:80/
 ```
+
+### 跨网段无法打开相册
+
+如果板端 8080 已处于 LISTEN，但电脑直连超时，先检查回程路由。此次板子无链路的 eth0 仍有同网段路由，电脑与板子又位于不同子网。临时可经能访问板子的 Ubuntu 转发：
+
+```sh
+ssh -N -L 127.0.0.1:18080:192.168.3.70:8080 用户名@Ubuntu地址
+```
+
+保持 SSH 连接，浏览器打开 <http://127.0.0.1:18080/>。该转发仅监听电脑本机，已验证 HTTP 200；停止 SSH 后失效，长期应修正网络路由。
 
 ## 验证记录与测试
 
