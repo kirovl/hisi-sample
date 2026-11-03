@@ -1,0 +1,17 @@
+# Local build, captures and runtime data
+output/
+build/
+__pycache__/
+*.pyc
+.DS_Store
+._*
+logs/
+screenshots/
+service-runtime/
+service-bin/
+*.tar.gz
+*.o
+*.a
+*.so
+*.so.*
+*.ko

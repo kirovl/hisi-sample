@@ -1,0 +1,22 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Only manage the Wi-Fi interface; preserve wired routes used for recovery.
+set -eu
+test "${interface:-}" = wlan0 || exit 1
+case "${1:-}" in
+    deconfig)
+        ifconfig "$interface" 0.0.0.0
+        ;;
+    bound|renew)
+        ifconfig "$interface" "$ip" netmask "${subnet:-255.255.255.0}"
+        while route del default dev "$interface" 2>/dev/null; do :; done
+        for gateway in ${router:-}; do
+            route add default gw "$gateway" dev "$interface" metric 20
+            break
+        done
+        if [ -n "${dns:-}" ]; then
+            : > /etc/resolv.conf
+            for server in $dns; do printf 'nameserver %s\n' "$server" >> /etc/resolv.conf; done
+        fi
+        ;;
+esac
