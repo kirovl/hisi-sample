@@ -1,8 +1,8 @@
 # CV610 Camera AI LCD
 
-把 OS04D10 拍到的画面显示在 CV610 的 JD9853 屏幕上，同时画出目标框、类别和置信度。屏幕菜单可以配 Wi-Fi、开关 AI、查看帧率和保存截图。
+这是一个在 CV610 开发板上运行的摄像头应用：用 OS04D10 采集画面，在 JD9853 屏幕上显示实时预览和识别结果。右上角的触屏菜单可以配 Wi-Fi、开关 AI、查看帧率，也可以截图。
 
-代码可以放在 SDK 目录外编译。摄像头初始化代码放在 `vendor/hisilicon/comm/`；编译还需要海思 SDK、模型、交叉工具链和 ARM libdrm。
+项目单独编译，不需要放进官方 samples 目录。摄像头初始化代码已放在 `vendor/hisilicon/comm/`，海思 SDK、模型、交叉工具链和 ARM libdrm 需要另外准备。
 
 ## 目录
 
@@ -30,31 +30,33 @@ OS04D10 → VI / ISP → VPSS NV21 → AIComponent → 画面 + 多目标框 / �
 
 - 摄像头采集 2560×1440 / 15 FPS，送入 AI 的画面为 768×432，屏幕画布为 320×240。
 - `--models hvf`：人脸、人体、车辆；`--models all` 加入宠物、包裹。使用 SDK 专用模型，不支持任意物体或人名识别。
-- 多目标同帧识别与绘制；默认开启 AI，可通过菜单关闭推理，仅保留预览。
-- 网络、主板、摄像头、无线模块信息；画面统计开关；PNG / JSON 截图；只读 FTP 和 HTTP 相册。
+- 一帧内可以标出多个目标。AI 默认开启，关闭后仍可看摄像头预览。
+- 可在屏幕上查看设备和网络信息，扫描 Wi-Fi 并输入密码连接。
+- 截图保存为 PNG，检测结果另存为 JSON；电脑可通过网页相册或只读 FTP 下载。
 
 ## 运行截图
 
-下面是从开发板 framebuffer 读取的主界面、菜单和统计页，分辨率为 320×240。
+下面几张是板端画面截图，分辨率为 320×240。
 
 | 全屏主界面 | 悬浮菜单展开 | 画面统计开启 |
 | --- | --- | --- |
 | ![摄像头全屏预览与右上角悬浮按钮](docs/images/main-screen.png) | ![向下展开的五项图标菜单](docs/images/main-menu.png) | ![分辨率、采集帧率与应用帧率叠层](docs/images/main-stats.png) |
 
-统计页显示采集 15 FPS、应用约 2.3 FPS。菜单中的相机按钮只保存摄像头画面和识别结果；这里为了展示操作界面，直接读取了完整 framebuffer。
+统计页里，15 FPS 是摄像头采集帧率，约 2.3 FPS 是开启 AI 后的显示帧率。这几张图直接读取了 framebuffer，所以能看到菜单；用屏幕上的截图按钮保存时，菜单不会入镜。
 
+绿色纸盒被识别为 PACKAGE，置信度 55%：
 
 ![包裹识别效果：绿色纸盒被框出并标记 PACKAGE 55%](docs/images/detection-package.png)
 
+下面这张里，手部被标成了 HUMAN，置信度也是 55%。这是一次误检，留着方便对照模型的实际表现。
 
 ![指定识别效果图：画面中的手部被模型标为 HUMAN 55%](docs/images/detection-human-hand.png)
-
 
 | 主板信息 | 摄像头与屏幕 | 无线模块 |
 | --- | --- | --- |
 | ![主板信息](docs/images/device-board.png) | ![摄像头信息](docs/images/device-camera.png) | ![无线模块信息](docs/images/device-radio.png) |
 
-摄像头页显示 OS04D10、2560×1440、15 FPS 采集，AI 开启时应用约 2.3 FPS。
+设备信息页可以查看摄像头型号、分辨率和帧率，也能查看有线网络、Wi-Fi 和无线模块状态。
 
 ## 硬件与运行环境
 
@@ -70,13 +72,13 @@ OS04D10 → VI / ISP → VPSS NV21 → AIComponent → 画面 + 多目标框 / �
 
 编译命令在 Ubuntu x86_64 上执行，生成的 ARM 程序放到开发板运行。
 
-板端先确认 `/dev/dri/card0`、触摸 evdev、`/run/sdk_server/osal_uds_server.sock` 存在。仅安装应用不会自动获得屏幕或 Wi-Fi 驱动。不要同时运行其他 VI / VPSS / NPU / LCD 示例。
+安装前先检查板端有没有 `/dev/dri/card0`、触摸 evdev 设备和 `/run/sdk_server/osal_uds_server.sock`。这些依赖内核和驱动，需要提前准备好。运行时先停掉其他占用摄像头、NPU 或屏幕的示例。
 
-显示和 Wi-Fi 使用 Linux **5.10.221**，MPP、LCD、触摸与 WS73 模块也要匹配这个版本。旧的 **5.10.221+** 模块不能混用。要在重启后继续使用，内核需要写入 NAND，不能只做 RAM 临时启动。蓝牙页面目前只显示 HCI 状态。
+这套应用使用 Linux **5.10.221**，MPP、LCD、触摸和 WS73 模块都要与它匹配。版本末尾的 `+` 也有影响，**5.10.221+** 的旧模块不能混用。调试时可以从 RAM 启动内核；要让应用重启后继续运行，还需要把匹配的内核写入 NAND。蓝牙目前只做 HCI 状态显示。
 
 ## Ubuntu 构建
 
-先按[官方首个项目教程](https://docs.hisilicon.com/projects/hi_aiot_solution/master/get-started/first-project/index.html)准备完整多仓源码、SDK、解压后的工具链及模型。另需已成功构建 JD9853 panel 示例以取得 ARM libdrm。
+编译前需要先完成[官方首个项目教程](https://docs.hisilicon.com/projects/hi_aiot_solution/master/get-started/first-project/index.html)，准备好完整源码、SDK、工具链和模型。ARM libdrm 从已编译成功的 JD9853 panel 工程中取得。
 
 ```bash
 sudo apt update
@@ -98,9 +100,9 @@ file "$OUT/build/camera_ai_lcd" "$OUT/build/wifi_setup"
 (cd "$OUT/package" && sha256sum -c SHA256SUMS)
 ```
 
-`file` 应显示 ARM EABI5，不能是 Ubuntu x86-64。产物为 `build/camera_ai_lcd`、`build/wifi_setup`、`package/` 和 `camera-ai-lcd.tar.gz`。模型及运行库由脚本从 SDK 复制到安装包，输出目录不要放进 SDK 库目录。
+编译后会得到两个程序 `build/camera_ai_lcd` 和 `build/wifi_setup`，以及 `package/` 目录和 `camera-ai-lcd.tar.gz` 安装包。`file` 的输出应包含 ARM EABI5。模型和运行库会从 SDK 一起复制过来，输出目录请放在 SDK 库目录之外。
 
-这个命令生成预览和配网程序。Wi-Fi 驱动、固件和截图服务按下一节打包。
+如果还要使用 Wi-Fi 和截图下载，接着打包下面的运行文件。
 
 ## Wi-Fi 与截图服务打包
 
@@ -114,15 +116,17 @@ WIFI_RUNTIME="$OUT/wifi-runtime" SERVICE_BUILD="$OUT/services" \
   bash "$APP/build-ubuntu.sh" "$SDK" "$DRM_PREFIX" "$OUT"
 ```
 
-`WS73_ROOTFS` 为输入路径，不是仓库自动提供的文件。所需结构包含 `root/plat_soc.ko`、`root/wifi_soc.ko`、`drv/ko/ot_board_io_cfg.ko`、`root/wpa_supplicant`、`root/wpa_cli`、`lib/libsecurec.so` 与 `ws73/` 固件。打包脚本核对文件和模块内核版本，生成空初始 Wi-Fi 配置。
+把 `WS73_ROOTFS` 改成已经准备好的 WS73 rootfs 目录。仓库里不附带这部分文件，目录中需要有 `root/plat_soc.ko`、`root/wifi_soc.ko`、`drv/ko/ot_board_io_cfg.ko`、`root/wpa_supplicant`、`root/wpa_cli`、`lib/libsecurec.so` 与 `ws73/` 固件。脚本会检查文件是否齐全、模块版本是否匹配，并生成一份空的 Wi-Fi 配置。
 
-也可通过 `wifi-provision/build-userspace.sh PROJECT OUTPUT` 从 SDK 构建 OpenSSL / libnl / supplicant。板端仍需要适配的 WS73 内核模块，用户态程序不能解决驱动版本不匹配。
+也可通过 `wifi-provision/build-userspace.sh PROJECT OUTPUT` 从 SDK 构建 OpenSSL / libnl / supplicant。若遇到驱动版本不匹配，仍需处理 WS73 内核模块，重新编译这些用户态程序没有用。
 
-内核辅助脚本 `build-wifi-display-kernel.sh PANEL_PROJECT SDK OUTPUT` 基于已有成功 panel 工程，清除额外 `+` 并启用 WIRELESS / CFG80211 / MAC80211，同步重建 MPP、LCD、触摸模块，保留 panel 设备树；仅生成产物，不烧写。它依赖完整 SDK 和已配置的 panel 构建树，建议先 RAM 验证。
+需要重编内核时，可以使用 `build-wifi-display-kernel.sh PANEL_PROJECT SDK OUTPUT`。它沿用编译成功的 panel 工程和设备树，去掉版本号末尾额外的 `+`，启用 WIRELESS、CFG80211、MAC80211，并重新编译 MPP、LCD 和触摸模块。
+
+这个脚本需要完整 SDK 和已经配置好的 panel 构建目录，只生成文件，不执行烧写。生成后先从 RAM 启动测试。
 
 ## 安装与启动
 
-板端先启动到 Linux，Debug USB 接 Ubuntu，退出其他串口工具并停止旧预览。两端网络应互通，按实际情况替换 IP 和串口路径。
+先让开发板进入 Linux，把 Debug USB 接到 Ubuntu，退出其他串口终端并停掉旧预览。确认 Ubuntu 能访问开发板，再按实际情况修改下面的 IP 和串口路径。
 
 ```bash
 SERIAL_PORT=/dev/serial/by-id/usb-1a86_USB_Single_Serial_5CF9102052-if00
@@ -132,7 +136,7 @@ sudo python3 "$APP/install-ubuntu.py" "$OUT/camera-ai-lcd.tar.gz" \
   --board-ip "$BOARD_IP" --port "$SERIAL_PORT"
 ```
 
-安装器通过 TCP 18889 传包，校验 SHA256 后解包到 `/opt/camera_ai_lcd`，默认注册开机自启。只想安装文件时加 `--no-autostart`。内核和驱动需要提前准备好，安装器不替换系统固件。
+安装脚本通过 TCP 18889 传文件，校验 SHA256 后解压到 `/opt/camera_ai_lcd`，并设置开机自启。加 `--no-autostart` 可以跳过自启设置。这个脚本只安装应用，内核和驱动仍需提前准备。
 
 在板端 shell 执行：
 
@@ -140,9 +144,9 @@ sudo python3 "$APP/install-ubuntu.py" "$OUT/camera-ai-lcd.tar.gz" \
 sh /opt/camera_ai_lcd/camera-service.sh start
 ```
 
-入口直接预览，后台启动 WS73、重连已保存网络，取得 IP 后启动截图服务。`CAMERA_AI_SKIP_WIFI=1` 可跳过后台 Wi-Fi 管理。`Ctrl+C` / SIGTERM 退出并释放相机、模型和显示资源。
+启动后会直接显示预览，Wi-Fi 在后台连接，取得 IP 后启动截图服务。应用由后台服务管理，停止时使用下一节的 `camera-service.sh stop`。调试启动脚本时，可以设置 `CAMERA_AI_SKIP_WIFI=1` 跳过 Wi-Fi 管理。
 
-单独调试：
+需要单独调试时，先用 `camera-service.sh stop` 停掉后台应用，再执行：
 
 ```sh
 sh /opt/camera_ai_lcd/run.sh --models hvf --seconds 10
@@ -159,7 +163,9 @@ sh /opt/camera_ai_lcd/camera-service.sh start
 sh /opt/camera_ai_lcd/camera-service.sh status
 ```
 
-自启服务等 `sdk_server` 就绪后进入预览，Wi-Fi 在后台连接，日志写到 `/tmp/camera-ai-lcd.log`。逐帧日志每 2000 行重新记录，避免占满内存。如果安装目录不同，替换命令中的路径；注册脚本会记住实际目录。不要再手动启动第二个预览进程。
+开机时，服务会等 `sdk_server` 准备好再启动预览，不必等 Wi-Fi 连上。日志在 `/tmp/camera-ai-lcd.log`，每 2000 行重新记录，避免长时间运行后占满内存。
+
+如果装在其他目录，把命令中的路径换掉即可，注册脚本会记录实际位置。已有服务运行时，不要另开预览进程。
 
 ```sh
 # 停止、重启应用
@@ -170,27 +176,27 @@ sh /opt/camera_ai_lcd/camera-service.sh restart
 sh /opt/camera_ai_lcd/enable-autostart.sh disable
 ```
 
-如果提示 `Kernel mismatch`，先核对 `uname -r`。自启脚本无法替代显示、摄像头和 Wi-Fi 内核适配。
+如果启动时报 `Kernel mismatch`，先用 `uname -r` 检查板端内核，再核对打包的驱动版本。
 
-2026-11-03 已在实板普通重启后验证：预览自动启动、已保存 Wi-Fi 自动连接，FTP 80 和网页 8080 自动恢复。详见 [验证记录](VALIDATION.md)。
+2026-11-03 在板上执行普通重启后，预览、Wi-Fi、FTP 80 和网页 8080 都已自动恢复。过程记录在 [VALIDATION.md](VALIDATION.md)。
 
 ## 屏幕操作
 
-右上角固定半透明按钮；点击后向下展开五个图标，不支持拖动。点击菜单外收起。
+点右上角的半透明按钮，会向下展开五个图标；再点菜单外的画面就能收起。按钮固定在右上角。
 
 1. 圆圈 i：设备信息，NETWORK / BOARD / CAMERA / RADIO 页签，BACK 返回。
 2. 柱状图：开关画面统计，显示摄像头分辨率、采集 FPS、VIEW FPS、AI ON/OFF、目标及截图数。
 3. Wi-Fi：扫描、上下滑动列表、选择热点、输入密码连接；已连接热点标绿。
 4. 相机：保存摄像头画面、框与标签；截图不包含导航菜单或设备信息页。
-5. AI：开启/关闭推理，开启高亮。关闭后清空旧框，继续预览；切换时重置模式 FPS 统计。
+5. AI：开关识别，开启时图标高亮。关闭后识别框消失，摄像头继续预览，帧率统计也会重新计算。
 
-Wi-Fi BACK 随时返回预览，已有连接由后台维持。当前不支持企业认证、WEP 或仅 SAE 的 WPA3；中文 SSID 显示有限制。密码保存于板端配置，设备信息不会显示密码。
+在配网页点 BACK 可以返回预览，不会断开已有连接。目前支持开放网络和 WPA/WPA2-PSK，不支持企业认证、WEP 和仅 SAE 的 WPA3，中文热点名也可能显示不全。密码保存在板端配置文件中，信息页不显示密码。
 
 ## 截图下载
 
-截图保存于 `/opt/camera_ai_lcd/screenshots/shot-*.png` 及同名 JSON。PNG 为逻辑横屏 320×240；统计开启时也会保存统计，菜单始终不保存。SIGUSR1 也可触发截图。
+截图放在 `/opt/camera_ai_lcd/screenshots/`，文件名为 `shot-*.png`，同名 JSON 记录检测结果。图片是 320×240 横屏。开启画面统计时，统计也会一起保存，悬浮菜单不会入镜。除了触屏按钮，也可以发送 SIGUSR1 触发截图。
 
-完整包会后台启动服务，也可手动执行：
+打包了截图服务后，应用会在后台启动它。需要手动启动时执行：
 
 ```sh
 sh /opt/camera_ai_lcd/serve-screenshots.sh start
@@ -202,7 +208,7 @@ sh /opt/camera_ai_lcd/serve-screenshots.sh start
 - 浏览器相册：<http://192.168.3.70:8080/>。
 - 只读 FTP：`ftp://192.168.3.70:80/`，匿名，用 FileZilla 或 curl。
 
-**端口 80 是 FTP，HTTP 相册使用 8080。** 普通浏览器不能通过 HTTP 80 查看 FTP。服务不支持上传、删除、TLS 或 SFTP。服务日志位于 `service-runtime/`，抓图不会删除已有文件。
+浏览器打开 8080 端口，FTP 客户端连接 80 端口，两个地址不要用反了。FTP 只提供下载，不支持上传、删除、TLS 或 SFTP。服务日志在 `service-runtime/`，下载截图不会删除板上的文件。
 
 ```bash
 curl --fail --user anonymous: --list-only ftp://192.168.3.70:80/
@@ -210,16 +216,16 @@ curl --fail --user anonymous: --list-only ftp://192.168.3.70:80/
 
 ## 验证记录与测试
 
-2026-11-03：独立源码在 SDK 树外的新临时目录完成全量编译、链接及打包，生成两个 ARM / musl 程序，117 个安装文件 SHA256 全部通过。构建规则没有相邻 `capture_picture/comm` 或 SDK `samples/mpp/common` 路径。详见 [VALIDATION.md](VALIDATION.md)。
+2026-11-03，把项目单独放到 SDK 目录外，从头编译并打包。预览和配网程序均编译成功，基础包中 117 个文件的 SHA256 校验通过。加入 Wi-Fi、截图服务和自启脚本后的完整包为 139 个文件，也已全部校验。构建时没有借用相邻 sample 的源码，详细记录见 [VALIDATION.md](VALIDATION.md)。
 
-同日实板触摸菜单对比：
+在屏幕菜单里切换 AI 开关，测得的显示帧率如下：
 
 | 模式 | 实测应用 FPS |
 | --- | ---: |
 | AI 开启，三模型 | 2.30 |
 | AI 关闭 | 11.61 |
 
-摄像头仍为 15 FPS。当前同步推理占主要耗时，关闭后约提升 5 倍。关闭只跳过推理，模型仍驻留。现场确认 FACE、HUMAN、PACKAGE；PET/VEHICLE 尚未现场验证，离线模型测试不等于现场准确率。
+两种模式下摄像头都以 15 FPS 采集。目前预览和推理串行执行，AI 会拖慢显示；关掉后显示帧率提高了约 5 倍，但模型仍留在内存中。摄像头实测识别过 FACE、HUMAN 和 PACKAGE，PET、VEHICLE 还没做现场测试。
 
 通用测试可在 Mac / Ubuntu 执行：
 
@@ -231,7 +237,7 @@ cc -std=c99 -O2 -I include tests/test_overlay.c src/overlay.c -lm -o /tmp/cv610-
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-`test_touch.c` 使用 Linux evdev，需要 Ubuntu；`tests/board_smoke.py` 需要开发板、SDK 测试素材和运行环境，属于实板测试。历史照片、原始日志与个人截图不随代码提交。
+`test_touch.c` 用到 Linux evdev，需要在 Ubuntu 上运行。`tests/board_smoke.py` 则需要连接开发板，并准备好 SDK 测试素材和板端运行环境。
 
 ## 目录结构
 
@@ -262,7 +268,6 @@ tests/                  主机与实板验证
 | 摄像头 I2C 首寄存器写失败 | 断电检查 OS04D10 FPC、Sensor0、两个 OFF |
 | scan failed | 检查 WS73 模块、CFG80211、supplicant 及版本 |
 | 串口 Resource busy | 停止其他串口会话后再安装 |
-| 有 Wi-Fi IP 却网络不通 | 检查同网段无链路 eth0 是否抢占回程路由 |
 | 相册打不开 | 核对实际 IP、HTTP 8080 和服务日志 |
 | 重启后屏幕不亮 | 检查 NAND 内核版本、S99camera-ai-lcd 和 /tmp/camera-ai-lcd.log |
 
