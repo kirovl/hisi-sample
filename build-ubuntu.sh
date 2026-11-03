@@ -18,6 +18,7 @@ PKG="$OUT/package"
 mkdir -p "$PKG/lib" "$PKG/models"
 cp "$OUT/build/camera_ai_lcd" "$OUT/build/wifi_setup" "$PKG/"
 cp "$HERE/run.sh" "$HERE/start-display.sh" "$HERE/start-preview.sh" "$HERE/start-application.sh" "$PKG/"
+cp "$HERE/camera-service.sh" "$HERE/enable-autostart.sh" "$PKG/"
 mkdir -p "$PKG/wifi-provision"
 cp "$HERE/wifi-provision/maintain-wifi.sh" "$HERE/wifi-provision/start-ws73.sh" "$HERE/wifi-provision/package-runtime.py" "$HERE/wifi-provision/udhcpc.script" "$PKG/wifi-provision/"
 # Optional Wi-Fi-only WS73 runtime; no BLE module or phone app is used.

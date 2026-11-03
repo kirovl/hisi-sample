@@ -6,7 +6,7 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 APP=$(CDPATH= cd -- "$HERE/.." && pwd)
 RUNTIME="$APP/service-runtime"
 mkdir -p "$RUNTIME"
-LOCK="$RUNTIME/wifi-worker.lock"
+LOCK=/run/camera-ai-lcd-wifi.lock
 if ! mkdir "$LOCK" 2>/dev/null; then
     old=$(cat "$LOCK/pid" 2>/dev/null || true)
     case "$old" in ''|*[!0-9]*) exit 0;; esac

@@ -8,6 +8,7 @@ import shlex
 import socket
 import subprocess
 import sys
+import tarfile
 import uuid
 
 
@@ -16,9 +17,17 @@ def main():
     parser.add_argument('archive', type=pathlib.Path)
     parser.add_argument('--board-ip', required=True)
     parser.add_argument('--port', default='/dev/ttyACM0')
+    parser.add_argument('--no-autostart', action='store_true',
+                        help='install files without registering the boot startup service')
     args = parser.parse_args()
     board_ip = str(ipaddress.IPv4Address(args.board_ip))
     archive = args.archive.resolve(strict=True)
+    if not args.no_autostart:
+        with tarfile.open(archive) as package:
+            files = {item.name.removeprefix('./') for item in package if item.isfile()}
+        required = {'camera-service.sh', 'enable-autostart.sh'}
+        if not required.issubset(files):
+            parser.error('archive lacks autostart scripts; rebuild it or use --no-autostart')
     helper = pathlib.Path(__file__).parent / 'tools' / 'board-console.py'
     with archive.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -30,7 +39,7 @@ def main():
         return subprocess.run([sys.executable, str(helper), '--port', args.port,
                                '--timeout', str(timeout), command], check=check)
 
-    # Leave bootloader, kernel, environment and startup scripts untouched.
+    # System firmware is managed separately; register only the application init entry.
     console('test "$(uname -s)" = Linux && test -x /usr/bin/tcpsvd && '
             'test -x /bin/tar && test -x /usr/bin/sha256sum')
     console('! netstat -ltn 2>/dev/null | grep -q ":18889 "')
@@ -55,8 +64,13 @@ def main():
     finally:
         console('if test -s ' + pidfile + '; then kill $(cat ' + pidfile +
                 ') 2>/dev/null || true; rm -f ' + pidfile + '; fi', check=False)
+    if not args.no_autostart:
+        console('sh ' + package_dir + '/enable-autostart.sh enable')
     print('Installed and SHA256 verified: ' + package_dir)
-    print('Board command: sh /opt/camera_ai_lcd/run.sh --models hvf')
+    if args.no_autostart:
+        print('Board command: sh ' + package_dir + '/start-application.sh')
+    else:
+        print('Boot autostart enabled. Start now: sh ' + package_dir + '/camera-service.sh start')
 
 
 if __name__ == '__main__':

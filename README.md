@@ -1,8 +1,8 @@
 # CV610 Camera AI LCD
 
-Hi3516CV610 独立应用：OS04D10 摄像头实时采集、AIComponent 多目标检测、JD9853 横屏显示、触屏 Wi-Fi 配网与截图下载。
+把 OS04D10 拍到的画面显示在 CV610 的 JD9853 屏幕上，同时画出目标框、类别和置信度。屏幕菜单可以配 Wi-Fi、开关 AI、查看帧率和保存截图。
 
-本项目可放在任意目录独立构建，**不需要放入官方 samples，也不依赖相邻 sample 源码**。必需的海思初始化辅助代码已包含于 `vendor/hisilicon/comm/`；海思 SDK、模型、工具链、ARM libdrm 及板端驱动仍为外部依赖，不随仓库分发。
+代码可以放在 SDK 目录外编译。摄像头初始化代码放在 `vendor/hisilicon/comm/`；编译还需要海思 SDK、模型、交叉工具链和 ARM libdrm。
 
 ## 目录
 
@@ -12,6 +12,7 @@ Hi3516CV610 独立应用：OS04D10 摄像头实时采集、AIComponent 多目标
 - [Ubuntu 构建](#ubuntu-构建)
 - [Wi-Fi 与截图服务打包](#wi-fi-与截图服务打包)
 - [安装与启动](#安装与启动)
+- [开机自启](#开机自启)
 - [屏幕操作](#屏幕操作)
 - [截图下载](#截图下载)
 - [验证记录与测试](#验证记录与测试)
@@ -27,41 +28,33 @@ OS04D10 → VI / ISP → VPSS NV21 → AIComponent → 画面 + 多目标框 / �
                                                 JD9853 LCD + 触摸菜单
 ```
 
-- 采集 2560×1440 / 15 FPS，VPSS 输出 768×432；逻辑横屏 320×240，整体旋转 90°。
-- 等比铺满屏幕并居中裁剪；图像和识别框采用同一变换。
+- 摄像头采集 2560×1440 / 15 FPS，送入 AI 的画面为 768×432，屏幕画布为 320×240。
 - `--models hvf`：人脸、人体、车辆；`--models all` 加入宠物、包裹。使用 SDK 专用模型，不支持任意物体或人名识别。
 - 多目标同帧识别与绘制；默认开启 AI，可通过菜单关闭推理，仅保留预览。
-- 默认直接进入预览，后台重连保存的 Wi-Fi；触屏扫描热点、选择网络、输入密码，无须手机 BLE。
 - 网络、主板、摄像头、无线模块信息；画面统计开关；PNG / JSON 截图；只读 FTP 和 HTTP 相册。
-- 未实现连续录屏、RTSP、异步推理或永久安装内核。
 
 ## 运行截图
 
-以下是 2026-11-03 自动触摸操作后，从实板 DRM framebuffer 读取的真实 320×240 页面，不是界面设计图或屏幕实拍；所选图片不含露脸人物。
+下面是从开发板 framebuffer 读取的主界面、菜单和统计页，分辨率为 320×240。
 
 | 全屏主界面 | 悬浮菜单展开 | 画面统计开启 |
 | --- | --- | --- |
 | ![摄像头全屏预览与右上角悬浮按钮](docs/images/main-screen.png) | ![向下展开的五项图标菜单](docs/images/main-menu.png) | ![分辨率、采集帧率与应用帧率叠层](docs/images/main-stats.png) |
 
-上图是实际摄像头预览，截图时画面中无检测目标；统计显示采集 2560×1440 / 15 FPS、AI 输入 768×432，应用约 2.3 FPS。菜单和统计页由完整 framebuffer 采集，区别于菜单中相机按钮保存的纯摄像头与识别结果图。
+统计页显示采集 15 FPS、应用约 2.3 FPS。菜单中的相机按钮只保存摄像头画面和识别结果；这里为了展示操作界面，直接读取了完整 framebuffer。
 
-包裹识别截图 `shot-19211-22666-000003.png`：模型将画面中的绿色纸盒标为 PACKAGE，置信度 55%，识别框、类别与置信度均为原图内容。
 
 ![包裹识别效果：绿色纸盒被框出并标记 PACKAGE 55%](docs/images/detection-package.png)
 
-用户保留的识别截图 `shot-3961-6876-000003.png`：
 
 ![指定识别效果图：画面中的手部被模型标为 HUMAN 55%](docs/images/detection-human-hand.png)
 
-该帧实际标签为 HUMAN、置信度 55%，画面中的手部被标为人体，属于误检示例；不能据此说明 PACKAGE 检测成功。
 
 | 主板信息 | 摄像头与屏幕 | 无线模块 |
 | --- | --- | --- |
 | ![主板信息](docs/images/device-board.png) | ![摄像头信息](docs/images/device-camera.png) | ![无线模块信息](docs/images/device-radio.png) |
 
-摄像头页显示 OS04D10、2560×1440、15 FPS 采集，AI 开启时应用约 2.3 FPS。RADIO 页的 HCI NOT EXPOSED 表示本应用未验证蓝牙协议栈，不能据此判定硬件损坏。
-
-待补实物照片清单见 [PHOTO_CHECKLIST.md](docs/PHOTO_CHECKLIST.md)。人物露脸原图与未检查截图不纳入文档。
+摄像头页显示 OS04D10、2560×1440、15 FPS 采集，AI 开启时应用约 2.3 FPS。
 
 ## 硬件与运行环境
 
@@ -75,11 +68,11 @@ OS04D10 → VI / ISP → VPSS NV21 → AIComponent → 画面 + 多目标框 / �
 | 构建机 | Ubuntu x86_64；实测 26.04.1 LTS / Python 3.14.4 |
 | 板端 | 匹配的 Linux、设备树、MPP、LCD、触摸及 WS73 模块；sdk_server 已运行 |
 
-Mac 可管理源码、运行通用主机测试；SDK 附带的 Linux x86_64 工具链不能直接在 macOS 执行，ARM 程序需在 Ubuntu 交叉编译。
+编译命令在 Ubuntu x86_64 上执行，生成的 ARM 程序放到开发板运行。
 
 板端先确认 `/dev/dri/card0`、触摸 evdev、`/run/sdk_server/osal_uds_server.sock` 存在。仅安装应用不会自动获得屏幕或 Wi-Fi 驱动。不要同时运行其他 VI / VPSS / NPU / LCD 示例。
 
-本次实板通过 RAM 临时启动 Linux **5.10.221**，配有同步重建的 MPP、屏幕及触摸模块；NAND 内核未更新，断电后需重新准备匹配的运行环境。旧 **5.10.221+** 模块不能与其混用。蓝牙项只报告 HCI 暴露状态，本应用未启用 BLE。
+显示和 Wi-Fi 使用 Linux **5.10.221**，MPP、LCD、触摸与 WS73 模块也要匹配这个版本。旧的 **5.10.221+** 模块不能混用。要在重启后继续使用，内核需要写入 NAND，不能只做 RAM 临时启动。蓝牙页面目前只显示 HCI 状态。
 
 ## Ubuntu 构建
 
@@ -107,7 +100,7 @@ file "$OUT/build/camera_ai_lcd" "$OUT/build/wifi_setup"
 
 `file` 应显示 ARM EABI5，不能是 Ubuntu x86-64。产物为 `build/camera_ai_lcd`、`build/wifi_setup`、`package/` 和 `camera-ai-lcd.tar.gz`。模型及运行库由脚本从 SDK 复制到安装包，输出目录不要放进 SDK 库目录。
 
-最小构建会生成预览与配网程序，但不自带所有可选 Wi-Fi、驱动、服务运行文件；这些需要按下节准备。构建应用不会清理官方工程，也不会烧写或重启开发板。
+这个命令生成预览和配网程序。Wi-Fi 驱动、固件和截图服务按下一节打包。
 
 ## Wi-Fi 与截图服务打包
 
@@ -121,7 +114,7 @@ WIFI_RUNTIME="$OUT/wifi-runtime" SERVICE_BUILD="$OUT/services" \
   bash "$APP/build-ubuntu.sh" "$SDK" "$DRM_PREFIX" "$OUT"
 ```
 
-`WS73_ROOTFS` 为输入路径，不是仓库自动提供的文件。所需结构包含 `root/plat_soc.ko`、`root/wifi_soc.ko`、`drv/ko/ot_board_io_cfg.ko`、`root/wpa_supplicant`、`root/wpa_cli`、`lib/libsecurec.so` 与 `ws73/` 固件。打包脚本核对文件和模块内核版本，生成空初始 Wi-Fi 配置，不包含个人密码。
+`WS73_ROOTFS` 为输入路径，不是仓库自动提供的文件。所需结构包含 `root/plat_soc.ko`、`root/wifi_soc.ko`、`drv/ko/ot_board_io_cfg.ko`、`root/wpa_supplicant`、`root/wpa_cli`、`lib/libsecurec.so` 与 `ws73/` 固件。打包脚本核对文件和模块内核版本，生成空初始 Wi-Fi 配置。
 
 也可通过 `wifi-provision/build-userspace.sh PROJECT OUTPUT` 从 SDK 构建 OpenSSL / libnl / supplicant。板端仍需要适配的 WS73 内核模块，用户态程序不能解决驱动版本不匹配。
 
@@ -139,12 +132,12 @@ sudo python3 "$APP/install-ubuntu.py" "$OUT/camera-ai-lcd.tar.gz" \
   --board-ip "$BOARD_IP" --port "$SERIAL_PORT"
 ```
 
-安装器通过 TCP 18889 传包，串口只发送命令；校验包及逐文件 SHA256 后安装到 `/opt/camera_ai_lcd`。不会替换内核或设置开机自启，更新前需自行停止旧进程。
+安装器通过 TCP 18889 传包，校验 SHA256 后解包到 `/opt/camera_ai_lcd`，默认注册开机自启。只想安装文件时加 `--no-autostart`。内核和驱动需要提前准备好，安装器不替换系统固件。
 
 在板端 shell 执行：
 
 ```sh
-sh /opt/camera_ai_lcd/start-application.sh
+sh /opt/camera_ai_lcd/camera-service.sh start
 ```
 
 入口直接预览，后台启动 WS73、重连已保存网络，取得 IP 后启动截图服务。`CAMERA_AI_SKIP_WIFI=1` 可跳过后台 Wi-Fi 管理。`Ctrl+C` / SIGTERM 退出并释放相机、模型和显示资源。
@@ -156,7 +149,30 @@ sh /opt/camera_ai_lcd/run.sh --models hvf --seconds 10
 sh /opt/camera_ai_lcd/run.sh --headless --models all --frames 10
 ```
 
-开发期间实板验证副本使用 `/opt/camera_ai_wifi_test`，与标准安装目录不同；不要同时启动两份应用。
+## 开机自启
+
+新安装包默认创建 `/etc/init.d/S99camera-ai-lcd`。已有安装可以在开发板上执行：
+
+```sh
+sh /opt/camera_ai_lcd/enable-autostart.sh enable
+sh /opt/camera_ai_lcd/camera-service.sh start
+sh /opt/camera_ai_lcd/camera-service.sh status
+```
+
+自启服务等 `sdk_server` 就绪后进入预览，Wi-Fi 在后台连接，日志写到 `/tmp/camera-ai-lcd.log`。逐帧日志每 2000 行重新记录，避免占满内存。如果安装目录不同，替换命令中的路径；注册脚本会记住实际目录。不要再手动启动第二个预览进程。
+
+```sh
+# 停止、重启应用
+sh /opt/camera_ai_lcd/camera-service.sh stop
+sh /opt/camera_ai_lcd/camera-service.sh restart
+
+# 关闭下次开机自启，不影响当前进程
+sh /opt/camera_ai_lcd/enable-autostart.sh disable
+```
+
+如果提示 `Kernel mismatch`，先核对 `uname -r`。自启脚本无法替代显示、摄像头和 Wi-Fi 内核适配。
+
+2026-11-03 已在实板普通重启后验证：预览自动启动、已保存 Wi-Fi 自动连接，FTP 80 和网页 8080 自动恢复。详见 [验证记录](VALIDATION.md)。
 
 ## 屏幕操作
 
@@ -228,6 +244,8 @@ build-ubuntu.sh          独立 CMake 构建和基础打包
 build-services-ubuntu.py  独立 BusyBox FTP/HTTP 构建
 install-ubuntu.py         网络安装与校验
 start-application.sh     预览和后台 Wi-Fi 入口
+camera-service.sh        应用启动、停止与状态
+enable-autostart.sh      注册或移除开机启动入口
 gallery/                 截图相册
 tests/                  主机与实板验证
 ```
@@ -246,6 +264,7 @@ tests/                  主机与实板验证
 | 串口 Resource busy | 停止其他串口会话后再安装 |
 | 有 Wi-Fi IP 却网络不通 | 检查同网段无链路 eth0 是否抢占回程路由 |
 | 相册打不开 | 核对实际 IP、HTTP 8080 和服务日志 |
+| 重启后屏幕不亮 | 检查 NAND 内核版本、S99camera-ai-lcd 和 /tmp/camera-ai-lcd.log |
 
 ## 来源与许可
 
